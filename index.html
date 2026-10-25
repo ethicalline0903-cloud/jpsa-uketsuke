@@ -1,62 +1,643 @@
 <!doctype html>
-<html lang="ja">
-<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QR読み取りテスト</title>
+<title>JPSA筑紫支部 セミナー受付</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
-  body { font-family: -apple-system, "Hiragino Sans", sans-serif; margin: 0; background: #f4f1f1; color: #222; }
-  header { background: #111; color: #fff; padding: 16px; font-size: 18px; }
-  main { padding: 16px; max-width: 480px; margin: 0 auto; }
-  button { width: 100%; padding: 16px; font-size: 17px; font-weight: bold; border: none; border-radius: 12px; background: #722633; color: #fff; }
-  #reader { margin-top: 16px; border-radius: 12px; overflow: hidden; background: #000; }
-  #result { margin-top: 16px; padding: 16px; border-radius: 12px; background: #fff; word-break: break-all; display: none; }
-  .label { font-size: 13px; color: #666; margin-bottom: 4px; }
-  .value { font-size: 20px; font-weight: bold; }
-  .error { background: #f6e2df !important; color: #a33; }
-</style>
-</head>
-<body>
-<header>QR読み取りテスト</header>
-<main>
-  <button id="start">カメラで読み取る</button>
-  <div id="reader"></div>
-  <div id="result"><div class="label">読み取った内容</div><div class="value" id="value"></div></div>
-</main>
-<script>
-  const startBtn = document.getElementById('start');
-  const result = document.getElementById('result');
-  const value = document.getElementById('value');
-  let scanner = null;
+/* レイアウト：スマホ1列のアプリ画面。黒の見出し帯、薄いグレーの地、操作はワインレッド。 */
+:root {
+  --bg: #f1f1f2; --surface: #ffffff; --ink: #1a1a1c; --muted: #64646a; --line: #dcdcdf;
+  --head: #111113; --head-ink: #ffffff; --sat: #2f62a3;
+  --brand: #7b1e33; --brand-ink: #ffffff; --accent: #a8762a; --soft: #f3e7ea;
+  --ok: #1c7444; --ok-bg: #e2f2e8; --warn: #8f5a00; --warn-bg: #fbefd8; --danger: #b3261e; --danger-bg: #fbe4e1;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --f-display: "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121214; --surface: #1c1c1f; --ink: #ececee; --muted: #9c9ca3; --line: #2e2e33;
+  --head: #000000; --head-ink: #ececee; --sat: #7fa8e0;
+  --brand: #d0687f; --brand-ink: #1a0a0f; --accent: #dcae5c; --soft: #2c1c21;
+  --ok: #67cf93; --ok-bg: #173323; --warn: #e6ad48; --warn-bg: #352812; --danger: #f2877e; --danger-bg: #3a1c1a;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121214; --surface: #1c1c1f; --ink: #ececee; --muted: #9c9ca3; --line: #2e2e33;
+  --head: #000000; --head-ink: #ececee; --sat: #7fa8e0;
+  --brand: #d0687f; --brand-ink: #1a0a0f; --accent: #dcae5c; --soft: #2c1c21;
+  --ok: #67cf93; --ok-bg: #173323; --warn: #e6ad48; --warn-bg: #352812; --danger: #f2877e; --danger-bg: #3a1c1a;
+  color-scheme: dark; }
 
-  startBtn.addEventListener('click', async () => {
-    result.style.display = 'none';
-    result.classList.remove('error');
-    startBtn.disabled = true;
-    startBtn.textContent = '読み取り中…';
-    scanner = new Html5Qrcode('reader');
-    try {
-      await scanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: 250 },
-        async (text) => {
-          await scanner.stop();
-          scanner.clear();
-          value.textContent = text;
-          result.style.display = 'block';
-          startBtn.disabled = false;
-          startBtn.textContent = 'もう一度読み取る';
-        }
-      );
-    } catch (e) {
-      value.textContent = 'カメラを起動できませんでした：' + e;
-      result.classList.add('error');
-      result.style.display = 'block';
-      startBtn.disabled = false;
-      startBtn.textContent = 'カメラで読み取る';
-    }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.7; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--head); }
+.wrap { max-width: 560px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--head); color: var(--head-ink); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; }
+.brand-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo { width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+.brand { font-family: var(--f-display); font-size: 19px; font-weight: 700; letter-spacing: .06em; }
+.brand small { display: block; font-family: var(--f-body); font-size: 11px; font-weight: 500; letter-spacing: .08em; opacity: .8; }
+.who { background: transparent; color: var(--head-ink); border: 1px solid currentColor; border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+main .wrap { padding-block: 20px 120px; display: grid; gap: 18px; }
+h1, h2 { font-family: var(--f-display); font-weight: 700; text-wrap: balance; margin: 0; line-height: 1.4; }
+h1 { font-size: 22px; } h2 { font-size: 18px; }
+.label { font-size: 12px; letter-spacing: .1em; color: var(--muted); font-weight: 500; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+.demo { background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 12px 14px; font-size: 13px; display: grid; gap: 8px; }
+.demo .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+label.f { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
+label.f .req { color: var(--danger); font-size: 11px; margin-left: 4px; }
+input, select, textarea { font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%; min-width: 0; }
+textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 12px 16px; background: var(--brand); color: var(--brand-ink); cursor: pointer; text-align: center; }
+.btn.sub { background: var(--soft); color: var(--brand); }
+.btn.line { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.danger { background: var(--danger-bg); color: var(--danger); }
+.btn.sm { padding: 6px 12px; font-size: 13px; }
+.btn[disabled] { opacity: .5; cursor: wait; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btns .btn { flex: 1 1 auto; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 12px; padding: 4px; }
+.seg button { font: inherit; font-weight: 700; border: 0; background: transparent; color: var(--muted); padding: 10px; border-radius: 9px; cursor: pointer; }
+.seg button[aria-selected="true"] { background: var(--surface); color: var(--brand); }
+.err { color: var(--danger); font-size: 13px; min-height: 1em; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 420px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* 会員証 */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.card .band { background: var(--head); color: var(--head-ink); padding: 10px 18px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.card .band b { font-family: var(--f-display); letter-spacing: .2em; font-size: 15px; }
+.card .band span { font-family: var(--f-mono); font-size: 13px; letter-spacing: .08em; }
+.card .body { padding: 20px 18px; display: grid; justify-items: center; gap: 12px; text-align: center; }
+#qr { background: #ffffff; padding: 12px; border-radius: 10px; line-height: 0; }
+#qr img, #qr canvas { width: 200px; height: 200px; }
+.card .name { font-family: var(--f-display); font-size: 22px; font-weight: 700; }
+.card .co { color: var(--muted); font-size: 13px; margin-top: -10px; }
+
+/* セミナー */
+.sem { display: grid; grid-template-columns: 58px 1fr; gap: 14px; align-items: start; }
+.datebox { border: 1px solid var(--line); border-radius: 10px; text-align: center; padding: 6px 0; font-variant-numeric: tabular-nums; }
+.datebox .m { font-size: 11px; color: var(--muted); display: block; }
+.datebox .d { font-family: var(--f-display); font-size: 22px; font-weight: 700; display: block; line-height: 1.2; }
+.datebox .w { font-size: 11px; color: var(--muted); }
+.datebox.today { border-color: var(--accent); }
+.sem .t { font-weight: 700; line-height: 1.5; }
+.sem .meta { font-size: 13px; color: var(--muted); }
+.info { white-space: pre-wrap; font-size: 14px; background: var(--bg); border-radius: 10px; padding: 12px; margin-top: 6px; overflow-wrap: anywhere; }
+details summary { cursor: pointer; color: var(--brand); font-size: 13px; font-weight: 700; margin-top: 4px; }
+.list { display: grid; gap: 16px; }
+.list > * + * { border-top: 1px solid var(--line); padding-top: 16px; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--soft); color: var(--brand); margin-right: 6px; vertical-align: 1px; }
+.pill.today { background: var(--accent); color: var(--surface); }
+
+.cal-head { display: flex; align-items: center; justify-content: space-between; }
+.cal-head button { font: inherit; font-size: 18px; background: var(--soft); color: var(--brand); border: 0; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-variant-numeric: tabular-nums; }
+.cal .wd { font-size: 11px; color: var(--muted); padding-bottom: 2px; }
+.cal .wd:first-child, .cal .sun { color: var(--danger); }
+.cal .sat { color: var(--sat); }
+.cal button { font: inherit; font-size: 14px; aspect-ratio: 1; max-width: 100%; border: 1px solid transparent; background: transparent; border-radius: 10px; cursor: pointer; color: inherit; position: relative; padding: 0; }
+.cal button.out { color: var(--muted); opacity: .45; }
+.cal button.is-today { border-color: var(--accent); }
+.cal button.has { background: var(--brand); color: var(--brand-ink); font-weight: 700; }
+.cal button.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 参加履歴 */
+.hist { display: grid; grid-template-columns: 48px 1fr; gap: 14px; align-items: center; }
+.stamp { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--danger); color: var(--danger); display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: 17px; transform: rotate(-8deg); }
+.big { font-family: var(--f-display); font-size: 34px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
+
+/* 受付 */
+#reader { width: 100%; border-radius: 12px; overflow: hidden; background: var(--bg); }
+#reader video { border-radius: 12px; }
+.result { border-radius: 12px; padding: 14px; font-weight: 700; display: grid; gap: 2px; }
+.result.ok { background: var(--ok-bg); color: var(--ok); }
+.result.already { background: var(--warn-bg); color: var(--warn); }
+.result.error { background: var(--danger-bg); color: var(--danger); }
+.result .sub { font-weight: 400; font-size: 13px; }
+.count { display: flex; align-items: baseline; gap: 6px; }
+.att { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; font-size: 14px; align-items: baseline; }
+.att .tm { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.att .id { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.inline { display: flex; gap: 8px; }
+.inline input { flex: 1; }
+.filebtn { position: relative; overflow: hidden; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+dl.prof { display: grid; grid-template-columns: 6em 1fr; gap: 6px 12px; margin: 0; font-size: 14px; }
+dl.prof dt { color: var(--muted); } dl.prof dd { margin: 0; overflow-wrap: anywhere; }
+.temp { font-family: var(--f-mono); font-size: 20px; letter-spacing: .08em; background: var(--bg); padding: 8px 12px; border-radius: 8px; user-select: all; }
+
+/* タブ */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+nav.tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+nav.tabs button { font: inherit; font-size: 11px; font-weight: 500; border: 0; background: transparent; color: var(--muted); padding: 8px 2px 10px; cursor: pointer; display: grid; justify-items: center; gap: 2px; }
+nav.tabs button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs button[aria-current="page"] { color: var(--brand); font-weight: 700; }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+.loading { text-align: center; color: var(--muted); padding: 40px 0; }
+@media (prefers-reduced-motion: no-preference) { .result, .toast { animation: pop .25s ease-out; } @keyframes pop { from { transform: translateY(6px); opacity: .4; } } .toast { animation-name: popc; } @keyframes popc { from { transform: translate(-50%, 6px); opacity: .4; } } }
+</style>
+
+<header class="top"><div class="wrap">
+  <div class="brand-row"><img class="logo" alt="JPSA筑紫支部" width="38" height="38" src="data:image/png;base64,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"><div class="brand">セミナー受付<small>JPSA 筑紫支部</small></div></div>
+  <button class="who" id="who-btn" hidden></button>
+</div></header>
+<main><div class="wrap" id="view"><div class="loading">読み込み中…</div></div></main>
+<nav class="tabs" id="tabs" hidden><div class="in" id="tabs-in"></div></nav>
+<div id="file-reader" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ===== 共通 ===== */
+const IS_GAS = typeof google !== 'undefined' && google.script && google.script.run;
+// ↓ Apps Script の「ウェブアプリURL」（…/exec で終わるもの）を '' の間に貼り付けます
+const API_URL = 'https://script.google.com/macros/s/AKfycbzK7DIT81dLkze3rzWc6NuTZ2IwnP3FxU90VamEP-h5OPk_Zug1iJbs1d9JsOrGuSw/exec';
+const USE_API = !IS_GAS && /^https:\/\/script\.google\.com\/.+\/exec$/.test(API_URL);
+const LIVE = IS_GAS || USE_API;
+const state = { token: null, user: null, history: [], seminars: [], tab: 'home', calMonth: null, selDay: null, recSeminar: null, editing: null };
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const parseYmd = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
+const todayStr = () => ymd(new Date());
+const jp = (s, withYear) => { const d = parseYmd(s); if (isNaN(d)) return s; return (withYear ? d.getFullYear() + '年' : '') + (d.getMonth() + 1) + '月' + d.getDate() + '日(' + WD[d.getDay()] + ')'; };
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
+
+function call(name, p) {
+  p = Object.assign({ token: state.token }, p || {});
+  if (IS_GAS) {
+    return new Promise((res, rej) => google.script.run
+      .withSuccessHandler(res)
+      .withFailureHandler((e) => rej(new Error((e && e.message) || String(e))))
+      .api(name, p));
+  }
+  if (USE_API) {
+    return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ name: name, p: p }) })
+      .then((r) => r.json(), () => { throw new Error('通信できませんでした。電波の良い場所でもう一度お試しください'); })
+      .then((r) => { if (!r.ok) throw new Error(r.error || 'エラーが発生しました'); return r.data; });
+  }
+  return new Promise((res, rej) => setTimeout(() => { try { res(JSON.parse(JSON.stringify(Demo.api(name, p)))); } catch (e) { rej(e); } }, 150));
+}
+
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600); }
+async function busy(btn, fn) { if (btn) btn.disabled = true; try { return await fn(); } finally { if (btn) btn.disabled = false; } }
+function handleAuthError(e) {
+  if (/有効期限|会員情報が見つかりません/.test(e.message)) { logout(); toast(e.message); return true; }
+  return false;
+}
+
+/* ===== ログイン・新規登録 ===== */
+function demoBanner() {
+  if (LIVE) return '';
+  return `<div class="demo"><div><b>体験版です。</b>データはこの画面の中だけで動き、再読み込みすると元に戻ります。</div>
+    <div class="row"><button class="btn sm" type="button" onclick="demoLogin('admin@example.com')">管理者として試す</button>
+    <button class="btn sm sub" type="button" onclick="demoLogin('taro@example.com')">会員として試す</button></div></div>`;
+}
+function renderAuth(mode) {
+  mode = mode || 'login';
+  $('tabs').hidden = true; $('who-btn').hidden = true;
+  const login = `
+    <form class="panel" id="login-form" novalidate>
+      <label class="f">メールアドレス<input id="lg-email" type="email" autocomplete="email" required></label>
+      <label class="f">パスワード<input id="lg-pw" type="password" autocomplete="current-password" required></label>
+      <div class="err" id="lg-err"></div>
+      <button class="btn" type="submit" id="lg-btn">ログイン</button>
+      <p class="small muted" style="margin:0">パスワードを忘れた場合は、受付の管理者に仮パスワードの発行を依頼してください。</p>
+    </form>`;
+  const reg = `
+    <form class="panel" id="reg-form" novalidate>
+      <label class="f"><span>氏名<span class="req">必須</span></span><input id="rg-name" autocomplete="name" required></label>
+      <label class="f">会社名<input id="rg-company" autocomplete="organization"></label>
+      <div class="grid2">
+        <label class="f">役職<input id="rg-title" autocomplete="organization-title" placeholder="例：代表取締役、営業"></label>
+        <label class="f">職種<input id="rg-job" placeholder="例：IT関連・メディア関連 など"></label>
+      </div>
+      <label class="f">電話番号<input id="rg-phone" type="tel" autocomplete="tel" placeholder="090-1234-5678"></label>
+      <label class="f"><span>メールアドレス<span class="req">必須</span></span><input id="rg-email" type="email" autocomplete="email" required></label>
+      <label class="f">趣味<input id="rg-hobby" placeholder="例：ゴルフ、読書"></label>
+      <label class="f"><span>パスワード（8文字以上）<span class="req">必須</span></span><input id="rg-pw" type="password" autocomplete="new-password" minlength="8" required></label>
+      <div class="err" id="rg-err"></div>
+      <button class="btn" type="submit" id="rg-btn">登録して会員証を受け取る</button>
+    </form>`;
+  $('view').innerHTML = `
+    ${demoBanner()}
+    <div><h1>${mode === 'login' ? 'おかえりなさい' : '会員登録'}</h1>
+    <p class="muted small" style="margin:4px 0 0">${mode === 'login' ? '登録したメールアドレスとパスワードでログインしてください。' : '登録すると、受付で使うあなた専用のQRコードが発行されます。'}</p></div>
+    <div class="seg" role="tablist">
+      <button type="button" role="tab" aria-selected="${mode === 'login'}" onclick="renderAuth('login')">ログイン</button>
+      <button type="button" role="tab" aria-selected="${mode === 'register'}" onclick="renderAuth('register')">新規登録</button>
+    </div>
+    ${mode === 'login' ? login : reg}`;
+  if (mode === 'login') {
+    $('login-form').addEventListener('submit', (ev) => { ev.preventDefault(); doLogin(); });
+  } else {
+    $('reg-form').addEventListener('submit', (ev) => { ev.preventDefault(); doRegister(); });
+  }
+}
+function demoLogin(email) { renderAuth('login'); $('lg-email').value = email; $('lg-pw').value = 'password123'; doLogin(); }
+async function doLogin() {
+  $('lg-err').textContent = '';
+  await busy($('lg-btn'), async () => {
+    try { const r = await call('login', { email: $('lg-email').value, password: $('lg-pw').value }); await afterAuth(r); }
+    catch (e) { $('lg-err').textContent = e.message; }
   });
+}
+async function doRegister() {
+  $('rg-err').textContent = '';
+  const v = (id) => $(id).value;
+  await busy($('rg-btn'), async () => {
+    try {
+      const r = await call('register', { name: v('rg-name'), company: v('rg-company'), title: v('rg-title'), job: v('rg-job'), phone: v('rg-phone'), email: v('rg-email'), hobby: v('rg-hobby'), password: v('rg-pw') });
+      await afterAuth(r); toast('登録しました。こちらがあなたの会員証です');
+    } catch (e) { $('rg-err').textContent = e.message; }
+  });
+}
+async function afterAuth(r) {
+  state.token = r.token; state.user = r.user; store.set('seminar_token', r.token);
+  await loadAll(); state.tab = 'home'; renderApp();
+}
+async function loadAll() {
+  const [me, sems] = await Promise.all([call('me'), call('getSeminars')]);
+  state.user = me.user; state.history = me.history; state.seminars = sems;
+}
+function logout() {
+  stopCam(); state.token = null; state.user = null; store.set('seminar_token', null); renderAuth('login');
+}
+
+/* ===== アプリ本体 ===== */
+const ICONS = {
+  home: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2M20 14v6h-6"/></svg>',
+  seminars: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  history: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>',
+  reception: '<svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg>',
+  manage: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>'
+};
+function renderTabs() {
+  const tabs = [['home', '会員証'], ['seminars', 'セミナー'], ['history', '参加履歴']];
+  if (state.user.isAdmin) tabs.push(['reception', '受付'], ['manage', '管理']);
+  $('tabs-in').innerHTML = tabs.map(([k, l]) => `<button type="button" ${state.tab === k ? 'aria-current="page"' : ''} onclick="go('${k}')">${ICONS[k]}${l}</button>`).join('');
+  $('tabs').hidden = false;
+  const w = $('who-btn'); w.hidden = false; w.textContent = state.user.name + ' 様'; w.onclick = () => go('account');
+}
+function go(tab) { if (state.tab === 'reception' && tab !== 'reception') stopCam(); state.tab = tab; renderApp(); window.scrollTo(0, 0); }
+function renderApp() {
+  renderTabs();
+  const v = { home: viewHome, seminars: viewSeminars, history: viewHistory, reception: viewReception, manage: viewManage, account: viewAccount }[state.tab] || viewHome;
+  v();
+}
+function upcoming() { const t = todayStr(); return state.seminars.filter((s) => s.date >= t); }
+function semDate(s) { const d = parseYmd(s.date); const today = s.date === todayStr();
+  return `<div class="datebox ${today ? 'today' : ''}"><span class="m">${d.getMonth() + 1}月</span><span class="d">${d.getDate()}</span><span class="w">${WD[d.getDay()]}曜</span></div>`; }
+function semItem(s, open) {
+  const today = s.date === todayStr();
+  return `<div class="sem">${semDate(s)}<div style="min-width:0">
+    <div class="t">${today ? '<span class="pill today">本日</span>' : ''}${esc(s.title)}</div>
+    <div class="meta">${jp(s.date, true)}${s.time ? '　' + esc(s.time) + '〜' : ''}${s.place ? '　' + esc(s.place) : ''}</div>
+    ${s.info ? `<details ${open ? 'open' : ''}><summary>事前情報を見る</summary><div class="info">${esc(s.info)}</div></details>` : ''}
+  </div></div>`;
+}
+
+/* 会員証（QRコード） */
+function viewHome() {
+  const u = state.user, next = upcoming()[0];
+  $('view').innerHTML = `
+    ${demoBanner()}
+    <div class="card">
+      <div class="band"><b>会 員 証</b><span>No. ${esc(u.id)}</span></div>
+      <div class="body">
+        <div id="qr" role="img" aria-label="受付用QRコード"></div>
+        <div class="name">${esc(u.name)}</div>
+        <div class="co">${esc([u.company, u.title].filter(Boolean).join('　'))}</div>
+        <div class="small muted">受付でこの画面をお見せください。<br>画面を明るくすると読み取りやすくなります。</div>
+      </div>
+    </div>
+    <section class="panel">
+      <div class="label">次回のセミナー</div>
+      ${next ? semItem(next, true) : '<p class="muted" style="margin:0">予定されているセミナーはまだありません。</p>'}
+    </section>`;
+  const box = $('qr');
+  if (typeof QRCode !== 'undefined') new QRCode(box, { text: u.qr, width: 400, height: 400, colorDark: '#111111', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  else box.innerHTML = '<p style="line-height:1.5;color:#111">QRコードを表示できませんでした。<br>会員番号 ' + esc(u.id) + ' をお伝えください。</p>';
+}
+
+/* セミナー（カレンダー＋事前情報） */
+function viewSeminars() {
+  if (!state.calMonth) { const d = new Date(); state.calMonth = new Date(d.getFullYear(), d.getMonth(), 1); }
+  const m = state.calMonth, y = m.getFullYear(), mo = m.getMonth();
+  const start = new Date(y, mo, 1 - m.getDay());
+  const byDate = {}; state.seminars.forEach((s) => { (byDate[s.date] = byDate[s.date] || []).push(s); });
+  const t = todayStr();
+  let cells = WD.map((w) => `<div class="wd">${w}</div>`).join('');
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), k = ymd(d);
+    const cls = [d.getMonth() !== mo ? 'out' : '', k === t ? 'is-today' : '', byDate[k] ? 'has' : '', state.selDay === k ? 'sel' : '', d.getDay() === 0 ? 'sun' : d.getDay() === 6 ? 'sat' : ''].join(' ');
+    cells += `<button type="button" class="${cls}" onclick="pickDay('${k}')" aria-label="${jp(k)}${byDate[k] ? ' セミナーあり' : ''}">${d.getDate()}</button>`;
+  }
+  const sel = state.selDay && byDate[state.selDay];
+  const ups = upcoming();
+  $('view').innerHTML = `
+    <h1>セミナー</h1>
+    <section class="panel">
+      <div class="cal-head"><button type="button" onclick="shiftMonth(-1)" aria-label="前の月">‹</button><h2>${y}年${mo + 1}月</h2><button type="button" onclick="shiftMonth(1)" aria-label="次の月">›</button></div>
+      <div class="cal">${cells}</div>
+      <div class="small muted">色がついた日がセミナー開催日です。日付をタップすると内容が表示されます。</div>
+    </section>
+    ${state.selDay ? `<section class="panel"><div class="label">${jp(state.selDay, true)}</div>${sel ? `<div class="list">${sel.map((s) => semItem(s, true)).join('')}</div>` : '<p class="muted" style="margin:0">この日はセミナーの予定がありません。</p>'}</section>` : ''}
+    <section class="panel"><div class="label">今後のセミナー</div>
+      ${ups.length ? `<div class="list">${ups.map((s) => semItem(s, false)).join('')}</div>` : '<p class="muted" style="margin:0">予定されているセミナーはまだありません。</p>'}
+    </section>`;
+}
+function shiftMonth(n) { const m = state.calMonth; state.calMonth = new Date(m.getFullYear(), m.getMonth() + n, 1); viewSeminars(); }
+function pickDay(k) { state.selDay = state.selDay === k ? null : k; viewSeminars(); }
+
+/* 参加履歴 */
+function viewHistory() {
+  const h = state.history;
+  $('view').innerHTML = `
+    <h1>参加履歴</h1>
+    <section class="panel"><div class="count"><span class="big">${h.length}</span><span class="muted">回 参加しました</span></div></section>
+    <section class="panel">
+      ${h.length ? `<div class="list">${h.map((r) => { const d = parseYmd(r.date);
+        return `<div class="hist"><div class="stamp" aria-hidden="true">済</div><div style="min-width:0"><div style="font-weight:700">${d.getMonth() + 1}月${d.getDate()}日に参加しました</div><div class="small muted">${esc(r.title)}</div><div class="small muted">受付 ${esc(r.at)}</div></div></div>`; }).join('')}</div>`
+        : '<p class="muted" style="margin:0">まだ参加記録はありません。セミナー当日に受付でQRコードを読み取ると、ここに記録されます。</p>'}
+    </section>`;
+}
+
+/* 受付（管理者） */
+let scanner = null, scanBusy = false;
+function defaultSeminar() {
+  if (state.recSeminar && state.seminars.some((s) => s.id === state.recSeminar)) return state.recSeminar;
+  const t = todayStr(); const today = state.seminars.find((s) => s.date === t);
+  const s = today || upcoming()[0] || state.seminars[state.seminars.length - 1];
+  return s ? s.id : null;
+}
+function viewReception() {
+  state.recSeminar = defaultSeminar();
+  const opts = state.seminars.slice().reverse().map((s) => `<option value="${esc(s.id)}" ${s.id === state.recSeminar ? 'selected' : ''}>${jp(s.date, true)} ${esc(s.title)}</option>`).join('');
+  $('view').innerHTML = `
+    <h1>受付</h1>
+    ${!state.seminars.length ? '<section class="panel"><p style="margin:0">先に「管理」タブでセミナーを登録してください。</p></section>' : `
+    <section class="panel">
+      <label class="f">受付するセミナー<select id="rc-sem">${opts}</select></label>
+      <div class="count"><span class="big" id="rc-count">–</span><span class="muted">名 受付済み</span></div>
+    </section>
+    <section class="panel">
+      <div class="label">QRコードを読み取る</div>
+      <div id="reader"></div>
+      <div class="btns">
+        <button class="btn" type="button" id="cam-start" onclick="startCam()">カメラで読み取る</button>
+        <button class="btn line" type="button" id="cam-stop" onclick="stopCam()" hidden>カメラを止める</button>
+        <span class="btn sub filebtn">写真から読み取る<input type="file" id="rc-file" accept="image/*" capture="environment" aria-label="QRコードの写真を選ぶ"></span>
+      </div>
+      <div id="rc-result" aria-live="polite"></div>
+      <div class="label">QRがない場合は会員番号で受付</div>
+      <form class="inline" id="rc-manual"><input id="rc-id" placeholder="例：M0002" autocapitalize="characters" aria-label="会員番号"><button class="btn" type="submit">受付</button></form>
+      ${LIVE ? '' : '<div class="small muted">体験版ではカメラは使えません。会員番号 M0002 を入力すると受付の流れを試せます。</div>'}
+    </section>
+    <section class="panel"><div class="label">受付済みの方</div><div id="rc-list" class="muted small">読み込み中…</div></section>`}`;
+  if (!state.seminars.length) return;
+  $('rc-sem').onchange = (e) => { state.recSeminar = e.target.value; $('rc-result').innerHTML = ''; loadAttendees(); };
+  $('rc-manual').addEventListener('submit', (e) => { e.preventDefault(); const v = $('rc-id').value.trim(); if (v) doCheckin(v, true).then(() => { $('rc-id').value = ''; }); });
+  $('rc-file').onchange = (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (typeof Html5Qrcode === 'undefined') { showResult('error', '読み取り機能を読み込めませんでした', '会員番号で受付してください'); return; }
+    shrinkImage(f).then((img) => new Html5Qrcode('file-reader').scanFile(img, false)).then((t) => doCheckin(t, false))
+      .catch(() => showResult('error', '写真からQRコードを見つけられませんでした', 'QRコードが大きく写るように撮り直すか、会員番号で受付してください'));
+  };
+  loadAttendees();
+}
+// iPhoneの写真は大きすぎて読み取れないことがあるので、縮小してから読む
+function shrinkImage(file, max) {
+  max = max || 1200;
+  return new Promise((res) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      if (k === 1) { URL.revokeObjectURL(url); res(file); return; }
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob((b) => res(b ? new File([b], 'qr.jpg', { type: 'image/jpeg' }) : file), 'image/jpeg', 0.9);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); res(file); };
+    img.src = url;
+  });
+}
+async function startCam() {
+  if (typeof Html5Qrcode === 'undefined') { showResult('error', '読み取り機能を読み込めませんでした', '通信状況を確認するか、会員番号で受付してください'); return; }
+  try {
+    scanner = scanner || new Html5Qrcode('reader');
+    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 230, height: 230 } }, onScan, () => {});
+    $('cam-start').hidden = true; $('cam-stop').hidden = false;
+  } catch (e) {
+    showResult('error', 'カメラを起動できませんでした', 'ブラウザのカメラ許可を確認してください。「写真から読み取る」か会員番号でも受付できます');
+  }
+}
+async function stopCam() {
+  try { if (scanner && scanner.isScanning) await scanner.stop(); } catch (e) {}
+  scanner = null;
+  if ($('cam-start')) { $('cam-start').hidden = false; $('cam-stop').hidden = true; }
+}
+async function onScan(text) {
+  if (scanBusy) return; scanBusy = true;
+  try { scanner.pause(true); } catch (e) {}
+  await doCheckin(text, false);
+  setTimeout(() => { scanBusy = false; try { scanner && scanner.resume(); } catch (e) {} }, 2000);
+}
+function showResult(kind, title, sub) {
+  $('rc-result').innerHTML = `<div class="result ${kind}"><div>${esc(title)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>`;
+}
+async function doCheckin(code, manual) {
+  try {
+    const r = await call('checkin', { code, manual, seminarId: state.recSeminar });
+    const who = r.member.name + ' 様' + (r.member.company ? '（' + r.member.company + '）' : '');
+    if (r.status === 'ok') { showResult('ok', who, '受付しました'); try { navigator.vibrate && navigator.vibrate(120); } catch (e) {} }
+    else showResult('already', who, 'すでに受付済みです');
+    loadAttendees();
+  } catch (e) { if (!handleAuthError(e)) showResult('error', e.message, ''); }
+}
+async function loadAttendees() {
+  try {
+    const list = await call('attendees', { seminarId: state.recSeminar });
+    if (!$('rc-list')) return;
+    $('rc-count').textContent = list.length;
+    $('rc-list').className = list.length ? 'att' : 'muted small';
+    $('rc-list').innerHTML = list.length ? list.map((a) => `<span class="tm">${esc(a.at.slice(-5))}</span><span>${esc(a.name)}<span class="small muted">　${esc(a.company)}</span></span><span class="id">${esc(a.id)}</span>`).join('') : 'まだ受付した方はいません。';
+  } catch (e) { handleAuthError(e); }
+}
+
+/* 管理（管理者） */
+function viewManage() {
+  const e = state.editing || {};
+  const list = state.seminars.slice().reverse();
+  $('view').innerHTML = `
+    <h1>管理</h1>
+    <form class="panel" id="sm-form" novalidate>
+      <h2>${e.id ? 'セミナーを編集' : 'セミナーを登録'}</h2>
+      <div class="grid2">
+        <label class="f"><span>開催日<span class="req">必須</span></span><input id="sm-date" type="date" value="${esc(e.date || '')}" required></label>
+        <label class="f">開始時刻<input id="sm-time" type="time" value="${esc(e.time || '')}"></label>
+      </div>
+      <label class="f"><span>タイトル<span class="req">必須</span></span><input id="sm-title" value="${esc(e.title || '')}" required></label>
+      <label class="f">会場<input id="sm-place" value="${esc(e.place || '')}"></label>
+      <label class="f">事前情報（会員に表示されます）<textarea id="sm-info" placeholder="講師、テーマ、持ち物、会費、駐車場など">${esc(e.info || '')}</textarea></label>
+      <div class="err" id="sm-err"></div>
+      <div class="btns"><button class="btn" type="submit" id="sm-btn">${e.id ? '変更を保存' : '登録して公開'}</button>${e.id ? '<button class="btn line" type="button" onclick="cancelEdit()">編集をやめる</button>' : ''}</div>
+    </form>
+    <section class="panel"><div class="label">登録済みのセミナー</div>
+      ${list.length ? `<div class="list">${list.map((s) => `<div class="sem">${semDate(s)}<div style="min-width:0;display:grid;gap:6px">
+        <div class="t">${esc(s.title)}</div><div class="small muted">${s.time ? esc(s.time) + '〜　' : ''}${esc(s.place)}${s.updatedBy ? '　更新：' + esc(s.updatedBy) : ''}</div>
+        <div class="btns"><button class="btn sm sub" type="button" onclick="editSem('${esc(s.id)}')">編集</button><button class="btn sm danger" type="button" id="del-${esc(s.id)}" onclick="delSem('${esc(s.id)}', this)">削除</button></div>
+      </div></div>`).join('')}</div>` : '<p class="muted" style="margin:0">まだ登録がありません。上のフォームから登録してください。</p>'}
+    </section>
+    <form class="panel" id="rp-form" novalidate>
+      <h2>パスワードの再発行</h2>
+      <p class="small muted" style="margin:0">会員がパスワードを忘れたときに、仮パスワードを発行します。会員に伝え、ログイン後に「アカウント」から変更してもらってください。</p>
+      <div class="inline"><input id="rp-email" type="email" placeholder="会員のメールアドレス" aria-label="会員のメールアドレス"><button class="btn" type="submit" id="rp-btn">発行</button></div>
+      <div id="rp-out"></div>
+    </form>
+    <section class="panel"><div class="label">管理者の追加・会員情報</div>
+      <p class="small" style="margin:0">管理者を増やすときは、スプレッドシートの「会員」シートで、その方の「権限」を「管理者」に変更してください（10名まで想定）。会員の一覧や受付記録もスプレッドシートで確認できます。</p>
+    </section>`;
+  $('sm-form').addEventListener('submit', (ev) => { ev.preventDefault(); saveSem(); });
+  $('rp-form').addEventListener('submit', (ev) => { ev.preventDefault(); resetPw(); });
+}
+function editSem(id) { state.editing = state.seminars.find((s) => s.id === id); viewManage(); window.scrollTo(0, 0); }
+function cancelEdit() { state.editing = null; viewManage(); }
+async function saveSem() {
+  $('sm-err').textContent = '';
+  const seminar = { id: state.editing && state.editing.id, date: $('sm-date').value, time: $('sm-time').value, title: $('sm-title').value, place: $('sm-place').value, info: $('sm-info').value };
+  await busy($('sm-btn'), async () => {
+    try { await call('saveSeminar', { seminar }); state.seminars = await call('getSeminars'); toast(seminar.id ? '変更を保存しました' : 'セミナーを登録しました'); state.editing = null; viewManage(); }
+    catch (e) { if (!handleAuthError(e)) $('sm-err').textContent = e.message; }
+  });
+}
+async function delSem(id, btn) {
+  if (!btn.dataset.confirm) { btn.dataset.confirm = '1'; btn.textContent = '本当に削除する'; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.confirm; btn.textContent = '削除'; } }, 4000); return; }
+  await busy(btn, async () => {
+    try { await call('deleteSeminar', { id }); state.seminars = await call('getSeminars'); toast('削除しました'); viewManage(); }
+    catch (e) { if (!handleAuthError(e)) toast(e.message); }
+  });
+}
+async function resetPw() {
+  await busy($('rp-btn'), async () => {
+    try { const r = await call('resetPassword', { email: $('rp-email').value });
+      $('rp-out').innerHTML = `<div class="small">${esc(r.name)} 様の仮パスワード</div><div class="temp">${esc(r.tempPassword)}</div>`; }
+    catch (e) { if (!handleAuthError(e)) $('rp-out').innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  });
+}
+
+/* アカウント */
+function viewAccount() {
+  const u = state.user;
+  $('view').innerHTML = `
+    <h1>アカウント</h1>
+    <section class="panel"><dl class="prof">
+      <dt>会員番号</dt><dd style="font-family:var(--f-mono)">${esc(u.id)}</dd>
+      <dt>氏名</dt><dd>${esc(u.name)}</dd><dt>会社名</dt><dd>${esc(u.company) || '—'}</dd>
+      <dt>役職</dt><dd>${esc(u.title) || '—'}</dd>
+      <dt>職種</dt><dd>${esc(u.job) || '—'}</dd><dt>電話番号</dt><dd>${esc(u.phone) || '—'}</dd>
+      <dt>メール</dt><dd>${esc(u.email)}</dd><dt>趣味</dt><dd>${esc(u.hobby) || '—'}</dd>
+      <dt>権限</dt><dd>${u.isAdmin ? '管理者' : '会員'}</dd>
+    </dl><p class="small muted" style="margin:0">登録内容の変更は管理者にご連絡ください。</p></section>
+    <form class="panel" id="pw-form" novalidate>
+      <h2>パスワードの変更</h2>
+      <label class="f">現在のパスワード<input id="pw-cur" type="password" autocomplete="current-password"></label>
+      <label class="f">新しいパスワード（8文字以上）<input id="pw-new" type="password" autocomplete="new-password"></label>
+      <div class="err" id="pw-err"></div>
+      <button class="btn" type="submit" id="pw-btn">変更する</button>
+    </form>
+    <button class="btn line" type="button" onclick="logout()">ログアウト</button>`;
+  $('pw-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); $('pw-err').textContent = '';
+    await busy($('pw-btn'), async () => {
+      try { await call('changePassword', { current: $('pw-cur').value, next: $('pw-new').value }); toast('パスワードを変更しました'); $('pw-cur').value = ''; $('pw-new').value = ''; }
+      catch (e) { if (!handleAuthError(e)) $('pw-err').textContent = e.message; }
+    });
+  });
+}
+
+/* ===== 体験版用のデータ（Googleに公開したときは使われません） ===== */
+const Demo = (() => {
+  const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
+  const stamp = (s, t) => s.replace(/-/g, '/') + ' ' + t;
+  const members = [
+    { id: 'M0001', name: '山田 花子', company: '株式会社やまだ', title: '代表取締役', job: '建設業', phone: '090-1111-2222', email: 'admin@example.com', hobby: '茶道', role: '管理者', pw: 'password123', qrKey: 'a1b2c3d4e5f6' },
+    { id: 'M0002', name: '佐藤 太郎', company: '佐藤工務店', title: '営業部長', job: '住宅・リフォーム', phone: '080-3333-4444', email: 'taro@example.com', hobby: 'ゴルフ', role: '会員', pw: 'password123', qrKey: 'f6e5d4c3b2a1' },
+    { id: 'M0003', name: '鈴木 一郎', company: 'すずき会計事務所', title: '所長', job: '税理士・会計', phone: '070-5555-6666', email: 'suzuki@example.com', hobby: '釣り', role: '会員', pw: 'password123', qrKey: '0f1e2d3c4b5a' }
+  ];
+  const seminars = [
+    { id: 'S1', date: day(-28), time: '06:30', title: '経営者モーニングセミナー「朝の習慣が会社を変える」', place: 'ホテル会議室A', info: '講師：田中 誠 氏（株式会社たなか 代表）\n会費：朝食代 1,000円\n6:15より受付開始です。', updatedBy: '山田 花子', updatedAt: '' },
+    { id: 'S2', date: day(0), time: '06:30', title: '経営者モーニングセミナー「人が育つ職場のつくり方」', place: 'ホテル会議室A', info: '講師：高橋 美和 氏（人材育成コンサルタント）\n会費：朝食代 1,000円\n持ち物：名刺、筆記用具\n駐車場はホテル地下（2時間無料）をご利用ください。', updatedBy: '山田 花子', updatedAt: '' },
+    { id: 'S3', date: day(28), time: '06:30', title: '経営者モーニングセミナー「事業承継、いつから準備するか」', place: 'ホテル会議室B', info: '講師：鈴木 一郎 氏（すずき会計事務所 税理士）\n会場がいつもと異なります。ご注意ください。', updatedBy: '山田 花子', updatedAt: '' }
+  ];
+  const checkins = [
+    { at: stamp(day(-28), '06:12'), seminarId: 'S1', date: day(-28), title: seminars[0].title, memberId: 'M0002', name: '佐藤 太郎', company: '佐藤工務店', staff: '山田 花子' },
+    { at: stamp(day(-28), '06:18'), seminarId: 'S1', date: day(-28), title: seminars[0].title, memberId: 'M0003', name: '鈴木 一郎', company: 'すずき会計事務所', staff: '山田 花子' },
+    { at: stamp(day(0), '06:10'), seminarId: 'S2', date: day(0), title: seminars[1].title, memberId: 'M0003', name: '鈴木 一郎', company: 'すずき会計事務所', staff: '山田 花子' }
+  ];
+  const sessions = {};
+  const now = () => { const d = new Date(); return stamp(ymd(d), pad(d.getHours()) + ':' + pad(d.getMinutes())); };
+  const obj = (m) => ({ id: m.id, name: m.name, company: m.company, title: m.title, job: m.job, phone: m.phone, email: m.email, hobby: m.hobby, isAdmin: m.role === '管理者', qr: m.id + '.' + m.qrKey });
+  const auth = (p, admin) => { const m = members.find((x) => x.id === sessions[p.token]); if (!m) throw new Error('ログインの有効期限が切れました。もう一度ログインしてください'); if (admin && m.role !== '管理者') throw new Error('この操作は管理者のみ行えます'); return m; };
+  const sess = (m) => { const t = Math.random().toString(36).slice(2) + Date.now(); sessions[t] = m.id; return t; };
+  const sorted = () => seminars.slice().sort((a, b) => (a.date + a.time) < (b.date + b.time) ? -1 : 1);
+  const H = {
+    register(p) {
+      const email = String(p.email || '').trim().toLowerCase();
+      if (!String(p.name || '').trim() || !email) throw new Error('氏名とメールアドレスは必須です');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('メールアドレスの形式が正しくありません');
+      if (String(p.password || '').length < 8) throw new Error('パスワードは8文字以上にしてください');
+      if (members.some((m) => m.email === email)) throw new Error('このメールアドレスはすでに登録されています');
+      const m = { id: 'M' + pad4(members.length + 1), name: p.name.trim(), company: p.company, title: p.title, job: p.job, phone: p.phone, email, hobby: p.hobby, role: '会員', pw: p.password, qrKey: Math.random().toString(16).slice(2, 14) };
+      members.push(m); return { token: sess(m), user: obj(m) };
+    },
+    login(p) { const m = members.find((x) => x.email === String(p.email || '').trim().toLowerCase()); if (!m || m.pw !== p.password) throw new Error('メールアドレスまたはパスワードが違います'); return { token: sess(m), user: obj(m) }; },
+    me(p) { const m = auth(p); return { user: obj(m), history: checkins.filter((c) => c.memberId === m.id).map((c) => ({ date: c.date, title: c.title, at: c.at })).sort((a, b) => a.date < b.date ? 1 : -1) }; },
+    changePassword(p) { const m = auth(p); if (m.pw !== p.current) throw new Error('現在のパスワードが違います'); if (String(p.next || '').length < 8) throw new Error('新しいパスワードは8文字以上にしてください'); m.pw = p.next; return { ok: true }; },
+    getSeminars(p) { auth(p); return sorted(); },
+    saveSeminar(p) {
+      const a = auth(p, true), s = p.seminar || {};
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date || '')) throw new Error('開催日を入力してください');
+      if (!String(s.title || '').trim()) throw new Error('タイトルを入力してください');
+      const rec = { id: s.id || 'S' + Date.now(), date: s.date, time: s.time, title: s.title.trim(), place: s.place, info: s.info, updatedBy: a.name, updatedAt: now() };
+      const i = seminars.findIndex((x) => x.id === s.id); if (i >= 0) seminars[i] = rec; else seminars.push(rec); return rec;
+    },
+    deleteSeminar(p) { auth(p, true); const i = seminars.findIndex((x) => x.id === p.id); if (i < 0) throw new Error('セミナーが見つかりません'); seminars.splice(i, 1); return { ok: true }; },
+    checkin(p) {
+      const a = auth(p, true), parts = String(p.code || '').trim().split('.'), id = parts[0].toUpperCase();
+      const m = members.find((x) => x.id === id); if (!m) throw new Error('会員が見つかりません（' + p.code + '）');
+      if (!p.manual && parts[1] !== m.qrKey) throw new Error('QRコードが正しくありません');
+      const s = seminars.find((x) => x.id === p.seminarId); if (!s) throw new Error('受付するセミナーを選んでください');
+      const info = { name: m.name, company: m.company, id };
+      if (checkins.some((c) => c.seminarId === s.id && c.memberId === id)) return { status: 'already', member: info };
+      checkins.push({ at: now(), seminarId: s.id, date: s.date, title: s.title, memberId: id, name: m.name, company: m.company, staff: a.name });
+      return { status: 'ok', member: info };
+    },
+    attendees(p) { auth(p, true); return checkins.filter((c) => c.seminarId === p.seminarId).map((c) => ({ at: c.at, id: c.memberId, name: c.name, company: c.company })).sort((a, b) => a.at < b.at ? 1 : -1); },
+    resetPassword(p) { auth(p, true); const m = members.find((x) => x.email === String(p.email || '').trim().toLowerCase()); if (!m) throw new Error('そのメールアドレスの会員は見つかりません'); m.pw = Math.random().toString(36).slice(2, 10); return { name: m.name, tempPassword: m.pw }; }
+  };
+  function pad4(n) { return String(n).padStart(4, '0'); }
+  return { api(name, p) { const fn = H[name]; if (!fn) throw new Error('不明な操作です'); return fn(p); } };
+})();
+
+/* ===== 起動 ===== */
+(async function boot() {
+  const t = LIVE ? store.get('seminar_token') : null;
+  if (t) {
+    state.token = t;
+    try { await loadAll(); renderApp(); return; } catch (e) { state.token = null; store.set('seminar_token', null); }
+  }
+  renderAuth('login');
+})();
 </script>
-</body>
-</html>
