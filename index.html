@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR読み取りテスト</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", sans-serif; margin: 0; background: #f4f1f1; color: #222; }
+  header { background: #111; color: #fff; padding: 16px; font-size: 18px; }
+  main { padding: 16px; max-width: 480px; margin: 0 auto; }
+  button { width: 100%; padding: 16px; font-size: 17px; font-weight: bold; border: none; border-radius: 12px; background: #722633; color: #fff; }
+  #reader { margin-top: 16px; border-radius: 12px; overflow: hidden; background: #000; }
+  #result { margin-top: 16px; padding: 16px; border-radius: 12px; background: #fff; word-break: break-all; display: none; }
+  .label { font-size: 13px; color: #666; margin-bottom: 4px; }
+  .value { font-size: 20px; font-weight: bold; }
+  .error { background: #f6e2df !important; color: #a33; }
+</style>
+</head>
+<body>
+<header>QR読み取りテスト</header>
+<main>
+  <button id="start">カメラで読み取る</button>
+  <div id="reader"></div>
+  <div id="result"><div class="label">読み取った内容</div><div class="value" id="value"></div></div>
+</main>
+<script>
+  const startBtn = document.getElementById('start');
+  const result = document.getElementById('result');
+  const value = document.getElementById('value');
+  let scanner = null;
+
+  startBtn.addEventListener('click', async () => {
+    result.style.display = 'none';
+    result.classList.remove('error');
+    startBtn.disabled = true;
+    startBtn.textContent = '読み取り中…';
+    scanner = new Html5Qrcode('reader');
+    try {
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: 250 },
+        async (text) => {
+          await scanner.stop();
+          scanner.clear();
+          value.textContent = text;
+          result.style.display = 'block';
+          startBtn.disabled = false;
+          startBtn.textContent = 'もう一度読み取る';
+        }
+      );
+    } catch (e) {
+      value.textContent = 'カメラを起動できませんでした：' + e;
+      result.classList.add('error');
+      result.style.display = 'block';
+      startBtn.disabled = false;
+      startBtn.textContent = 'カメラで読み取る';
+    }
+  });
+</script>
+</body>
+</html>
