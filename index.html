@@ -306,7 +306,17 @@ function renderTabs() {
   $('tabs').hidden = false;
   const w = $('who-btn'); w.hidden = false; w.textContent = state.user.name + ' 様'; w.onclick = () => go('account');
 }
-function go(tab) { if (state.tab === 'reception' && tab !== 'reception') stopCam(); state.tab = tab; renderApp(); window.scrollTo(0, 0); }
+function go(tab) {
+  if (state.tab === 'reception' && tab !== 'reception') stopCam();
+  state.tab = tab; renderApp(); window.scrollTo(0, 0);
+  // 参加履歴・会員証・セミナーを開いたときは、最新の記録を読み込み直す
+  if (tab === 'history' || tab === 'home' || tab === 'seminars') {
+    Promise.all([call('me'), call('getSeminars')]).then(([me, sems]) => {
+      state.user = me.user; state.history = me.history; state.seminars = sems;
+      if (state.tab === tab) renderApp();
+    }).catch((e) => { handleAuthError(e); });
+  }
+}
 function renderApp() {
   renderTabs();
   const v = { home: viewHome, seminars: viewSeminars, history: viewHistory, reception: viewReception, manage: viewManage, account: viewAccount }[state.tab] || viewHome;
