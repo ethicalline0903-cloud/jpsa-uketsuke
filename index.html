@@ -1,6 +1,14 @@
 <!doctype html>
+<html lang="ja">
+<head>
 <meta charset="utf-8">
 <title>JPSA筑紫支部 セミナー受付</title>
+<meta name="apple-mobile-web-app-title" content="JPSA受付">
+<meta name="application-name" content="JPSA受付">
+<meta name="theme-color" content="#111113">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="manifest" href="manifest.json">
 <meta name="claude:viewport-fit-sides" content="cover">
 <base target="_top">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -168,7 +176,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = (n) => String(n).padStart(2, '0');
 const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-const parseYmd = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
+const parseYmd = (s) => { const t = String(s || ''); let m = t.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/); if (m) return new Date(+m[1], m[2] - 1, +m[3]); m = t.match(/^(\d{1,2})\D+(\d{1,2})/); if (m) return new Date(new Date().getFullYear(), m[1] - 1, +m[2]); return new Date(NaN); };
 const todayStr = () => ymd(new Date());
 const jp = (s, withYear) => { const d = parseYmd(s); if (isNaN(d)) return s; return (withYear ? d.getFullYear() + '年' : '') + (d.getMonth() + 1) + '月' + d.getDate() + '日(' + WD[d.getDay()] + ')'; };
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
@@ -298,6 +306,7 @@ function renderApp() {
 }
 function upcoming() { const t = todayStr(); return state.seminars.filter((s) => s.date >= t); }
 function semDate(s) { const d = parseYmd(s.date); const today = s.date === todayStr();
+  if (isNaN(d)) return `<div class="datebox"><span class="m">日付</span><span class="d" style="font-size:15px">未設定</span></div>`;
   return `<div class="datebox ${today ? 'today' : ''}"><span class="m">${d.getMonth() + 1}月</span><span class="d">${d.getDate()}</span><span class="w">${WD[d.getDay()]}曜</span></div>`; }
 function semItem(s, open) {
   const today = s.date === todayStr();
