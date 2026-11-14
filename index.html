@@ -239,7 +239,6 @@ function renderAuth(mode) {
         <label class="f">役職<input id="rg-title" autocomplete="organization-title" placeholder="例：代表取締役、営業"></label>
         <label class="f">職種<input id="rg-job" placeholder="例：IT関連・メディア関連 など"></label>
       </div>
-      <label class="f">電話番号<input id="rg-phone" type="tel" autocomplete="tel" placeholder="090-1234-5678"></label>
       <label class="f"><span>メールアドレス<span class="req">必須</span></span><input id="rg-email" type="email" autocomplete="email" required></label>
       <label class="f">趣味<input id="rg-hobby" placeholder="例：ゴルフ、読書"></label>
       <label class="f"><span>パスワード（8文字以上）<span class="req">必須</span></span><input id="rg-pw" type="password" autocomplete="new-password" minlength="8" required></label>
@@ -274,7 +273,7 @@ async function doRegister() {
   const v = (id) => $(id).value;
   await busy($('rg-btn'), async () => {
     try {
-      const r = await call('register', { name: v('rg-name'), company: v('rg-company'), title: v('rg-title'), job: v('rg-job'), phone: v('rg-phone'), email: v('rg-email'), hobby: v('rg-hobby'), password: v('rg-pw') });
+      const r = await call('register', { name: v('rg-name'), company: v('rg-company'), title: v('rg-title'), job: v('rg-job'), email: v('rg-email'), hobby: v('rg-hobby'), password: v('rg-pw') });
       await afterAuth(r); toast('登録しました。こちらがあなたの会員証です');
     } catch (e) { $('rg-err').textContent = e.message; }
   });
@@ -573,7 +572,7 @@ function viewAccount() {
       <dt>会員番号</dt><dd style="font-family:var(--f-mono)">${esc(u.id)}</dd>
       <dt>氏名</dt><dd>${esc(u.name)}</dd><dt>会社名</dt><dd>${esc(u.company) || '—'}</dd>
       <dt>役職</dt><dd>${esc(u.title) || '—'}</dd>
-      <dt>職種</dt><dd>${esc(u.job) || '—'}</dd><dt>電話番号</dt><dd>${esc(u.phone) || '—'}</dd>
+      <dt>職種</dt><dd>${esc(u.job) || '—'}</dd>
       <dt>メール</dt><dd>${esc(u.email)}</dd><dt>趣味</dt><dd>${esc(u.hobby) || '—'}</dd>
       <dt>権限</dt><dd>${u.isAdmin ? '管理者' : '会員'}</dd>
     </dl><p class="small muted" style="margin:0">登録内容の変更は管理者にご連絡ください。</p></section>
