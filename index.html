@@ -402,6 +402,38 @@ function viewHistory() {
 
 /* 受付（管理者） */
 let scanner = null, scanBusy = false;
+
+/* 効果音（音のファイルは使わず、ブラウザで音を作って鳴らす） */
+let audioCtx = null;
+function unlockSound() {
+  // iPhoneはボタンを押したときにしか音の準備ができないため、受付の操作をしたときに呼ぶ
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+}
+function playSound(kind) {
+  if (!audioCtx) return;
+  const tunes = {
+    ok:      { wave: 'sine',     notes: [[1318.5, 0, 0.12], [1568, 0.09, 0.12], [2093, 0.18, 0.5]] }, // ピロリーン
+    already: { wave: 'triangle', notes: [[988, 0, 0.1], [988, 0.16, 0.1]] },                          // ピッピッ
+    error:   { wave: 'square',   notes: [[196, 0, 0.35]] }                                              // ブッ
+  };
+  const t = tunes[kind]; if (!t) return;
+  try {
+    const now = audioCtx.currentTime;
+    t.notes.forEach(([freq, start, len]) => {
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = t.wave; osc.frequency.value = freq;
+      const vol = kind === 'error' ? 0.12 : 0.3;
+      gain.gain.setValueAtTime(0.0001, now + start);
+      gain.gain.exponentialRampToValueAtTime(vol, now + start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + start + len);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(now + start); osc.stop(now + start + len + 0.05);
+    });
+  } catch (e) {}
+}
 function defaultSeminar() {
   if (state.recSeminar && state.seminars.some((s) => s.id === state.recSeminar)) return state.recSeminar;
   const t = todayStr(); const today = state.seminars.find((s) => s.date === t);
@@ -434,7 +466,8 @@ function viewReception() {
     <section class="panel"><div class="label">受付済みの方</div><div id="rc-list" class="muted small">読み込み中…</div></section>`}`;
   if (!state.seminars.length) return;
   $('rc-sem').onchange = (e) => { state.recSeminar = e.target.value; $('rc-result').innerHTML = ''; loadAttendees(); };
-  $('rc-manual').addEventListener('submit', (e) => { e.preventDefault(); const v = $('rc-id').value.trim(); if (v) doCheckin(v, true).then(() => { $('rc-id').value = ''; }); });
+  $('rc-manual').addEventListener('submit', (e) => { e.preventDefault(); unlockSound(); const v = $('rc-id').value.trim(); if (v) doCheckin(v, true).then(() => { $('rc-id').value = ''; }); });
+  $('rc-file').onclick = () => unlockSound();
   $('rc-file').onchange = (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     if (typeof Html5Qrcode === 'undefined') { showResult('error', '読み取り機能を読み込めませんでした', '会員番号で受付してください'); return; }
@@ -460,6 +493,7 @@ function shrinkImage(file, max) {
   });
 }
 async function startCam() {
+  unlockSound();
   if (typeof Html5Qrcode === 'undefined') { showResult('error', '読み取り機能を読み込めませんでした', '通信状況を確認するか、会員番号で受付してください'); return; }
   try {
     scanner = scanner || new Html5Qrcode('reader');
@@ -487,10 +521,10 @@ async function doCheckin(code, manual) {
   try {
     const r = await call('checkin', { code, manual, seminarId: state.recSeminar });
     const who = r.member.name + ' 様' + (r.member.company ? '（' + r.member.company + '）' : '');
-    if (r.status === 'ok') { showResult('ok', who, '受付しました'); try { navigator.vibrate && navigator.vibrate(120); } catch (e) {} }
-    else showResult('already', who, 'すでに受付済みです');
+    if (r.status === 'ok') { showResult('ok', who, '受付しました'); playSound('ok'); try { navigator.vibrate && navigator.vibrate(120); } catch (e) {} }
+    else { showResult('already', who, 'すでに受付済みです'); playSound('already'); }
     loadAttendees();
-  } catch (e) { if (!handleAuthError(e)) showResult('error', e.message, ''); }
+  } catch (e) { if (!handleAuthError(e)) { showResult('error', e.message, ''); playSound('error'); } }
 }
 async function loadAttendees() {
   try {
