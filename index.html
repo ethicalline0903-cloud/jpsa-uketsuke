@@ -403,36 +403,59 @@ function viewHistory() {
 /* 受付（管理者） */
 let scanner = null, scanBusy = false;
 
-/* 効果音（音のファイルは使わず、ブラウザで音を作って鳴らす） */
-let audioCtx = null;
-function unlockSound() {
-  // iPhoneはボタンを押したときにしか音の準備ができないため、受付の操作をしたときに呼ぶ
+/* 効果音：音のデータをこの画面の中で作り、音楽と同じ「再生音」として最大音量で鳴らす */
+const SOUNDS = {};
+let soundsReady = false;
+function makeTone(notes) {
+  // notes: [周波数, 開始秒, 長さ秒]。倍音を足してスマホのスピーカーでも聞き取りやすい音色にする
+  const rate = 22050;
+  const total = Math.max(...notes.map((n) => n[1] + n[2])) + 0.05;
+  const len = Math.ceil(total * rate), data = new Float32Array(len);
+  notes.forEach(([f, st, d]) => {
+    const s0 = Math.floor(st * rate), n = Math.floor(d * rate);
+    for (let i = 0; i < n && s0 + i < len; i++) {
+      const t = i / rate;
+      const env = Math.min(1, t / 0.005) * Math.exp(-3.2 * t / d);
+      const w = Math.sin(2 * Math.PI * f * t) + 0.45 * Math.sin(4 * Math.PI * f * t) + 0.25 * Math.sin(6 * Math.PI * f * t);
+      data[s0 + i] += w * env;
+    }
+  });
+  let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v));
+  const buf = new ArrayBuffer(44 + len * 2), dv = new DataView(buf);
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) dv.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); dv.setUint32(4, 36 + len * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+  str(36, 'data'); dv.setUint32(40, len * 2, true);
+  for (let i = 0; i < len; i++) {
+    const v = Math.tanh(1.6 * data[i] / (peak || 1)) / Math.tanh(1.6); // 音割れしない範囲で最大まで持ち上げる
+    dv.setInt16(44 + i * 2, Math.round(v * 32000), true);
+  }
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function prepareSounds() {
+  if (Object.keys(SOUNDS).length) return;
+  const tunes = {
+    ok:      [[1318.5, 0, 0.16], [1568, 0.11, 0.16], [2093, 0.22, 0.7]], // ピロリーン
+    already: [[988, 0, 0.14], [988, 0.2, 0.14]],                         // ピッピッ
+    error:   [[262, 0, 0.18], [196, 0.18, 0.4]]                           // ブブー
+  };
   try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    Object.keys(tunes).forEach((k) => { const a = new Audio(makeTone(tunes[k])); a.preload = 'auto'; a.volume = 1; SOUNDS[k] = a; });
   } catch (e) {}
 }
+function unlockSound() {
+  // iPhoneは、ボタンを押したときに一度再生しておかないと、あとから音を鳴らせない
+  prepareSounds();
+  if (soundsReady) return;
+  Object.values(SOUNDS).forEach((a) => {
+    try { a.muted = true; const pr = a.play(); if (pr) pr.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; }); } catch (e) {}
+  });
+  soundsReady = true;
+}
 function playSound(kind) {
-  if (!audioCtx) return;
-  const tunes = {
-    ok:      { wave: 'sine',     notes: [[1318.5, 0, 0.12], [1568, 0.09, 0.12], [2093, 0.18, 0.5]] }, // ピロリーン
-    already: { wave: 'triangle', notes: [[988, 0, 0.1], [988, 0.16, 0.1]] },                          // ピッピッ
-    error:   { wave: 'square',   notes: [[196, 0, 0.35]] }                                              // ブッ
-  };
-  const t = tunes[kind]; if (!t) return;
-  try {
-    const now = audioCtx.currentTime;
-    t.notes.forEach(([freq, start, len]) => {
-      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-      osc.type = t.wave; osc.frequency.value = freq;
-      const vol = kind === 'error' ? 0.12 : 0.3;
-      gain.gain.setValueAtTime(0.0001, now + start);
-      gain.gain.exponentialRampToValueAtTime(vol, now + start + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + start + len);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(now + start); osc.stop(now + start + len + 0.05);
-    });
-  } catch (e) {}
+  const a = SOUNDS[kind]; if (!a) return;
+  try { a.muted = false; a.volume = 1; a.currentTime = 0; const pr = a.play(); if (pr) pr.catch(() => {}); } catch (e) {}
 }
 function defaultSeminar() {
   if (state.recSeminar && state.seminars.some((s) => s.id === state.recSeminar)) return state.recSeminar;
